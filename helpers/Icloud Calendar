@@ -46,8 +46,15 @@ def adicionar_eventos_na_agenda(icloud: PyiCloudService, eventos: List[Dict]):
             )
             data_fim = data_inicio + datetime.timedelta(hours=1)
             
-            # Cria evento usando a API correta
-            icloud.calendar.post(
-                {
-                    'title': f"Pregão {evento['Nº do Edital']} – {evento['Órgão']}",
-                    'startDate': data
+            # Cria evento usando a API correta (usando o método 'create_event' se disponível)
+            icloud.calendar.create_event(
+                data_inicio,
+                data_fim,
+                f"Pregão {evento['Nº do Edital']} – {evento['Órgão']}",
+                f"Item: {evento['Item']} | Link: {evento['Link']}"
+            )
+
+            print(f"📆 Evento adicionado: Pregão {evento['Nº do Edital']} – {evento['Órgão']}")
+        
+        except Exception as e:
+            print(f"⚠️ Erro ao adicionar evento {evento.get('Nº do Edital', 'desconhecido')}: {e}")

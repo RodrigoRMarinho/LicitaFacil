@@ -1,0 +1,37 @@
+# helpers/icloud_calendar.py
+
+import datetime
+from typing import List, Dict
+
+# Este módulo usa o pacote pyicloud, que requer autenticação por código 2FA
+# Instalação: pip install pyicloud
+
+# ATENÇÃO: Para funcionar, você precisa ativar a autenticação com token e usar pyicloud-ipd (mantido pela comunidade)
+# https://github.com/picklepete/pyicloud
+
+from pyicloud import PyiCloudService
+
+# Função para autenticar e retornar a sessão
+
+def autenticar_icloud(usuario: str, senha: str):
+    icloud = PyiCloudService(usuario, senha)
+    if icloud.requires_2fa:
+        print("Autenticação de dois fatores é necessária.")
+        code = input("Digite o código recebido em seu dispositivo Apple: ")
+        result = icloud.validate_2fa_code(code)
+        print("✅ Código válido." if result else "❌ Código inválido.")
+    return icloud
+
+# Função para adicionar eventos à agenda
+
+def adicionar_eventos_na_agenda(icloud, eventos: List[Dict]):
+    calendar = icloud.calendar
+    for evento in eventos:
+        data = datetime.datetime.strptime(evento["Data do Pregão"] + " " + evento["Horário"], "%Y-%m-%d %H:%M")
+        calendar.create(
+            title=f"Pregão {evento['Nº do Edital']} – {evento['Órgão']} ({evento['Palavras-chave encontradas']})",
+            start=data,
+            end=data + datetime.timedelta(hours=1),
+            location=evento['Portal'],
+            notes=f"Link: {evento['Link do Edital']}"
+        )

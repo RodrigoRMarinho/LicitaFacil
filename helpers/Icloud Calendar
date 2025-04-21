@@ -2,36 +2,52 @@
 
 import datetime
 from typing import List, Dict
-
-# Este módulo usa o pacote pyicloud, que requer autenticação por código 2FA
-# Instalação: pip install pyicloud
-
-# ATENÇÃO: Para funcionar, você precisa ativar a autenticação com token e usar pyicloud-ipd (mantido pela comunidade)
-# https://github.com/picklepete/pyicloud
-
 from pyicloud import PyiCloudService
 
-# Função para autenticar e retornar a sessão
-
-def autenticar_icloud(usuario: str, senha: str):
+def autenticar_icloud(usuario: str, senha: str) -> PyiCloudService:
+    """
+    Autentica no iCloud com tratamento de 2FA
+    
+    Args:
+        usuario: Email do iCloud
+        senha: Senha da conta
+    
+    Returns:
+        Instância autenticada do PyiCloudService
+    """
     icloud = PyiCloudService(usuario, senha)
+    
     if icloud.requires_2fa:
-        print("Autenticação de dois fatores é necessária.")
+        print("\n🔐 Autenticação de dois fatores necessária")
         code = input("Digite o código recebido em seu dispositivo Apple: ")
-        result = icloud.validate_2fa_code(code)
-        print("✅ Código válido." if result else "❌ Código inválido.")
+        if not icloud.validate_2fa_code(code):
+            raise ValueError("❌ Código 2FA inválido")
+        print("✅ Autenticação concluída")
+    
     return icloud
 
-# Função para adicionar eventos à agenda
-
-def adicionar_eventos_na_agenda(icloud, eventos: List[Dict]):
-    calendar = icloud.calendar
+def adicionar_eventos_na_agenda(icloud: PyiCloudService, eventos: List[Dict]):
+    """
+    Adiciona eventos à agenda do iCloud
+    
+    Args:
+        icloud: Sessão autenticada
+        eventos: Lista de dicionários com dados dos eventos
+    """
+    if not icloud.calendar:
+        raise RuntimeError("Serviço de calendário não disponível")
+    
     for evento in eventos:
-        data = datetime.datetime.strptime(evento["Data do Pregão"] + " " + evento["Horário"], "%Y-%m-%d %H:%M")
-        calendar.create(
-            title=f"Pregão {evento['Nº do Edital']} – {evento['Órgão']} ({evento['Palavras-chave encontradas']})",
-            start=data,
-            end=data + datetime.timedelta(hours=1),
-            location=evento['Portal'],
-            notes=f"Link: {evento['Link do Edital']}"
-        )
+        try:
+            # Converte datas
+            data_inicio = datetime.datetime.strptime(
+                f"{evento['Data do Pregão']} {evento['Horário']}", 
+                "%Y-%m-%d %H:%M"
+            )
+            data_fim = data_inicio + datetime.timedelta(hours=1)
+            
+            # Cria evento usando a API correta
+            icloud.calendar.post(
+                {
+                    'title': f"Pregão {evento['Nº do Edital']} – {evento['Órgão']}",
+                    'startDate': data
